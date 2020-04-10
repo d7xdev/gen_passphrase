@@ -69,6 +69,7 @@ Dictionary  : %s
 Dict Len    : %10d (word)
 Entropy     : %10.2f (bit/word)
 Pw Len      : %10d (word)
+            : %10d (char)
 Pw Entropy  : %10.2f (bit)
 Password    : %s
-''' % (wordlist, len(words), entropy, pw_len, pw_entropy, password))
+''' % (wordlist, len(words), entropy, pw_len, len(password), pw_entropy, password))
