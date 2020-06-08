@@ -37,40 +37,34 @@
 #   80.0
 #
 
+import argparse
 import secrets
 import sys
 import math
-
-USAGE = "Usage: %s [ -h | --help ] [ NUM_WORDS ]" % sys.argv[0]
 
 CHARSET = "?.*#%0123456789CDFHJKLMNPQRTVWXY"
 CHARS_PER_WORD = 4
 
 ##------------------------------------------------------------------------------
+def _strict_positive_int(value):
+    try:
+        ivalue = int(value)
+        if ivalue <= 0: raise ValueError
+    except ValueError:
+        raise argparse.ArgumentTypeError("invalid strict positive int value: '%s'" % value)
+    return ivalue
+
 def parse_args():
     DEFAULT_PASSWORD_LEN = 4
-
-    if len(sys.argv) == 1:
-        return DEFAULT_PASSWORD_LEN
-    elif len(sys.argv) == 2:
-        arg1 = sys.argv[1]
-        if arg1 == "-h" or arg1 == "--help":
-            print(USAGE)
-            sys.exit(0)
-        else:
-            try:
-                num = int(arg1)
-                if num > 0:
-                    return num
-                else:
-                    sys.stderr.write("ERROR: '%s' is not greater than zero\n" % arg1)
-                    sys.exit(1)
-            except ValueError:
-                sys.stderr.write("ERROR: '%s' is not an integer\n" % arg1)
-                sys.exit(1)
-    else:
-        sys.stderr.write(USAGE)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="""
+A password generator inspired by NES Snake's Revenge video game
+""")
+    parser.add_argument("NUM_WORDS", type=_strict_positive_int, nargs='?',
+                        default=DEFAULT_PASSWORD_LEN,
+                        help="number of words to generate (default: %s)" % DEFAULT_PASSWORD_LEN)
+    parser.add_argument("-b", "--brief", action="store_true",
+                        help="do not output password metric")
+    return parser.parse_args()
 
 ##------------------------------------------------------------------------------
 def gen_word():
@@ -78,7 +72,8 @@ def gen_word():
 
 ##------------------------------------------------------------------------------
 if __name__ == '__main__':
-    num_words = parse_args()
+    args = parse_args()
+    num_words = args.NUM_WORDS
 
     entropy_per_char = math.log(len(CHARSET))/math.log(2)
     entropy_per_word = entropy_per_char * CHARS_PER_WORD
@@ -86,7 +81,10 @@ if __name__ == '__main__':
     pw_entropy = entropy_per_word * num_words
     password = " ".join(gen_word() for x in range(num_words))
 
-    print('''
+    if args.brief:
+        print(password)
+    else:
+        print('''
 Charset     : %s
             : %10d (char)
 Entropy     : %10.2f (bit/char)

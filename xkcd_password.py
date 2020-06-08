@@ -4,41 +4,42 @@
 # Source #2: https://xkcd.com/936/
 # Source #3: https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
 
+import argparse
 import secrets
 import sys
 import math
 
-USAGE = "Usage: %s [ -h | --help ] [ NUM_WORDS ]" % sys.argv[0]
-
 ##------------------------------------------------------------------------------
+def _strict_positive_int(value):
+    try:
+        ivalue = int(value)
+        if ivalue <= 0: raise ValueError
+    except ValueError:
+        raise argparse.ArgumentTypeError("invalid strict positive int value: '%s'" % value)
+    return ivalue
+
 def parse_args():
     DEFAULT_WORDLIST = 'dict/eff_short_wordlist_2_0.txt'
     DEFAULT_PASSWORD_LEN = 4
+    parser = argparse.ArgumentParser(description="""
+A password generator inspired by XKCD #936 and EFF Diceware wordlist
+""")
 
-    if len(sys.argv) == 1:
-        return DEFAULT_WORDLIST, DEFAULT_PASSWORD_LEN
-    elif len(sys.argv) == 2:
-        arg1 = sys.argv[1]
-        if arg1 == "-h" or arg1 == "--help":
-            print(USAGE)
-            sys.exit(0)
-        else:
-            try:
-                num = int(arg1)
-                if num > 0:
-                    return DEFAULT_WORDLIST, num
-                else:
-                    sys.stderr.write("ERROR: '%s' is not greater than zero\n" % arg1)
-                    sys.exit(1)
-            except ValueError:
-                sys.stderr.write("ERROR: '%s' is not an integer\n" % arg1)
-                sys.exit(1)
-    else:
-        sys.stderr.write(USAGE)
-        sys.exit(1)
+    parser.add_argument("NUM_WORDS", type=_strict_positive_int, nargs='?',
+                        default=DEFAULT_PASSWORD_LEN,
+                        help="number of words to generate (default: %s)" % DEFAULT_PASSWORD_LEN)
+    parser.add_argument("-f", "--wordlist",
+                        default=DEFAULT_WORDLIST,
+                        help="Diceware wordlist to use (default: %s)" % DEFAULT_WORDLIST)
+    parser.add_argument("-b", "--brief", action="store_true",
+                        help="do not output password metric")
+    return parser.parse_args()
 
 ##------------------------------------------------------------------------------
 def load(path):
+    ## TODO: Add support for UNIX words in addition to current Diceware format
+    ##  - Diceware format /^[1-6]+\s+\w+$/
+    ##  - UNIX words format /^\w+$/
     with open(path) as f:
         words = [line.strip().split()[1] for line in f]
     return words
@@ -56,15 +57,19 @@ def validate(words):
 
 ##------------------------------------------------------------------------------
 if __name__ == '__main__':
-    wordlist, pw_len = parse_args()
+    args = parse_args()
+    (wordlist, num_words) = (args.wordlist, args.NUM_WORDS)
     words = load(wordlist)
     validate(words)
 
     entropy     = math.log(len(words))/math.log(2)
-    pw_entropy  = pw_len * entropy
-    password    = ' '.join(secrets.choice(words) for i in range(pw_len))
+    pw_entropy  = num_words * entropy
+    password    = ' '.join(secrets.choice(words) for i in range(num_words))
 
-    print('''
+    if args.brief:
+        print(password)
+    else:
+        print('''
 Dictionary  : %s
 Dict Len    : %10d (word)
 Entropy     : %10.2f (bit/word)
@@ -72,4 +77,4 @@ Pw Len      : %10d (word)
             : %10d (char)
 Pw Entropy  : %10.2f (bit)
 Password    : %s
-''' % (wordlist, len(words), entropy, pw_len, len(password), pw_entropy, password))
+''' % (wordlist, len(words), entropy, num_words, len(password), pw_entropy, password))
